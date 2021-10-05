@@ -2,7 +2,6 @@ import User from "../models/User.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
-
 const UserController = {
   async createUser(req, res) {
     const userData = {
@@ -10,72 +9,73 @@ const UserController = {
       email: req.body.email,
       password: await bcrypt.hash(req.body.password, 10),
     };
-    
-    await User.create({
-      name: userData.name,
-      email: userData.email,
-      password: userData.password,
-    }).then(async () => {
-      await User.findAll({
+    try {
+      const userInfo = await User.findAll({
         raw: true,
         plain: true,
         where: {
           email: userData.email,
         },
         attributes: ["id"],
-      }).then(async (result)=>{
-          console.log(result)
-        const token = await jwt.sign(result.id, process.env.SECRET_KEY);
-        res.writeHead(201, {
-            "Set-Cookie": `token=${token};`,
+      });
+      console.log(userInfo);
+      if (!userInfo) {
+        await User.create({
+          name: userData.name,
+          email: userData.email,
+          password: userData.password,
+        });
+      } else {
+        res.status(403).end();
+        console.log("Usuário já existe");
+      }
+
+      const token = await jwt.sign(userInfo.id, process.env.SECRET_KEY);
+
+      res.writeHead(201, {
+            "Set-Cookie": `access-token=${token};`,
             "Access-Control-Allow-Credentials": "true",
-            })
-            .end();
-      })
-    }).catch(e=>{
-        console.log(`Email já cadastrado: ${e}`)
-        res.status(403).end()
-    })
+          })
+    } catch (e) {
+      console.log("Error: " + e.message);
+    }
   },
 
-  async login(req, res){
-
+  async login(req, res) {
     const userData = {
       email: req.body.email,
-      password: req.body.password
-    }
-
-    await User.findAll({
-      raw: true,
+      password: req.body.password,
+    };
+    try {
+      const userCredentials = await User.findAll({
+        raw: true,
         plain: true,
         where: {
           email: userData.email,
         },
-        attributes: ["email","password","id"]
-    }).then(async (result) => {
-      if(!result){
-        console.log("valor nulo",result)
+        attributes: ["email", "password", "id"],
+      });
+      if (!userCredentials) {
+        console.log("valor nulo", userCredentials);
         res.status(403).json({
-          error: "Credenciais não existem"
-        })
-        return
+          error: "Credenciais não existem",
+        });
+        return;
       }
-      if(await bcrypt.compare(userData.password, result.password)){
-        const token = await jwt.sign(result.id, process.env.SECRET_KEY)
-        res.writeHead(201, {
-          "Set-Cookie": `token=${token};`,
-          "Access-Control-Allow-Credentials": "true",
-          })
-          .end();
-      }else{
-        res.status(403).end()
-        console.log("Credenciais invalidas")
+      if (await bcrypt.compare(userData.password, userCredentials.password)) {
+        const token = await jwt.sign(
+          userCredentials.id,
+          process.env.SECRET_KEY
+        );
+        res.status(201).cookie('access-token', token).end();
+      } else {
+        res.status(403).end();
+        console.log("Credenciais invalidas");
       }
-
-    }).catch(e=>{
-      console.log(e)
-    })
-  }
+    } catch (e) {
+      console.log("Error: " + e.message);
+    }
+  },
 };
 
 export default UserController;
