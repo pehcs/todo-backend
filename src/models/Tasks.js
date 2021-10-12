@@ -18,6 +18,7 @@ const Tasks = db.define('Task',{
         type: DataTypes.DATE
     }
 })
+//inverter o deadline
 
 
 export default Tasks

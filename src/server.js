@@ -6,8 +6,10 @@ import dotenv from 'dotenv'
 
 dotenv.config()
 const server = express();
+const resetDb = false
 
-db.sync({logging: false})
+db.sync({force: resetDb, logging: false})
+
 server.use(cookieParser())
 server.use(express.urlencoded({ extended: false }));
 server.use(express.json());

@@ -1,59 +1,87 @@
-import Tasks from '../models/Tasks.js'
-
-const tasks = [];
+import Tasks from "../models/Tasks.js";
+import jwt from "jsonwebtoken";
 
 const TaskController = {
-
-  async showTask(req, res) {
-    const taskData = await Tasks.findAll()
-  
-    res.json(taskData)
-    
+  async showTasks(req, res) {
+    try {
+      const taskData = await Tasks.findAll({
+        where: {
+          UserId: await jwt.verify(
+            req.cookies["access-token"],
+            process.env.SECRET_KEY
+          ),
+        },
+      });
+      console.log(taskData);
+      res.json(taskData);
+    } catch (e) {
+      console.log(e);
+    }
   },
 
   async addTask(req, res) {
-    const taskData = {
-      title: req.body.title,
-      task: req.body.task
+    try {
+      const { title, task } = req.body;
+      const createTask = await Tasks.create({
+        title,
+        task,
+        UserId: await jwt.verify(
+          req.cookies["access-token"],
+          process.env.SECRET_KEY
+        ),
+      });
+      console.log(createTask);
+      res.status(201).end();
+    } catch (e) {
+      console.log("Error:", e.message);
     }
-
-    await Tasks.create({
-        title: taskData.title,
-        task: taskData.task
-    }).then(()=>{
-      res.status(200).end()
-    }).catch(e=>{
-      res.status(400).end()
-    })
   },
 
   async deleteTask(req, res) {
-    const id = req.params.id;
-
-    await Tasks.destroy({
-      where:{
-        id: req.params.id
+    try {
+      const deleteTaskRequest = await Tasks.destroy({
+        where: {
+          UserId: await jwt.verify(
+            req.cookies["access-token"],
+            process.env.SECRET_KEY
+          ),
+          id: req.params.id,
+        },
+      });
+      if (!deleteTaskRequest) {
+        console.log("delete nada");
+        res.status(404).end();
+      } else {
+        res.status(200).end();
       }
-    })
-
-    res.end();
+      console.log(deleteTaskRequest);
+    } catch (e) {
+      console.log("message error: " + e.message);
+    }
   },
 
-  editTask(req, res) {
-    const id = req.params.id;
-    const title = req.body.title;
-    const task = req.body.task;
+  async editTask(req, res) {
+    try {
+      const id = req.params.id;
+      const { title, task } = req.body;
 
-    tasks.map((taskItem) => {
-      console.log(taskItem.id);
-      if (taskItem.id === id) {
-        taskItem.title = title;
-        taskItem.task = task;
-      }
-    });
-
-    console.log(tasks);
-    res.end();
+      await Tasks.update(
+        { title, task },
+        {
+          where: {
+            UserId: await jwt.verify(
+              req.cookies["access-token"],
+              process.env.SECRET_KEY
+            ),
+            id,
+          },
+        }
+      );
+      res.status(200).end();
+    } catch (e) {
+      console.log("Error:", e);
+      res.status(500).end();
+    }
   },
 };
 

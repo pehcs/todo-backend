@@ -4,11 +4,13 @@ import jwt from "jsonwebtoken";
 
 const UserController = {
   async createUser(req, res) {
+
     const userData = {
       name: req.body.name,
       email: req.body.email,
       password: await bcrypt.hash(req.body.password, 10),
     };
+
     try {
       const userInfo = await User.findAll({
         raw: true,
@@ -20,22 +22,25 @@ const UserController = {
       });
       console.log(userInfo);
       if (!userInfo) {
-        await User.create({
+        const newUser = await User.create({
           name: userData.name,
           email: userData.email,
           password: userData.password,
         });
+        const token = await jwt.sign(newUser.id, process.env.SECRET_KEY);
+  
+        res.writeHead(201, {
+              "Set-Cookie": `access-token=${token};`,
+              "Access-Control-Allow-Credentials": "true",
+            }).end()
+          console.log(newUser.id)
+          console.log("Usuário criado com sucesso: ",newUser)
+        
       } else {
         res.status(403).end();
         console.log("Usuário já existe");
       }
 
-      const token = await jwt.sign(userInfo.id, process.env.SECRET_KEY);
-
-      res.writeHead(201, {
-            "Set-Cookie": `access-token=${token};`,
-            "Access-Control-Allow-Credentials": "true",
-          })
     } catch (e) {
       console.log("Error: " + e.message);
     }

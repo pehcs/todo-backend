@@ -5,17 +5,17 @@ import userAuth from './middlewares/userAuth.js'
 
 const router = express.Router();
 
-router.get("/",userAuth,(req,res) => {
-    res.json({message: "ok"})
-});
-
-router.post("/todo/:id", TaskController.addTask);
-
 router.post("/user/create", UserController.createUser);
 router.post("/user/login", UserController.login);
+
 router.get("/user/login", (req,res)=>{
     res.json({message: "Login area"})
 });
+
+router.use(userAuth)
+router.get("/",TaskController.showTasks);
+
+router.post("/todo/add", TaskController.addTask);
 
 router.delete("/todo/delete/:id", TaskController.deleteTask);
 
